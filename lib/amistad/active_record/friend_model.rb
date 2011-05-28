@@ -47,13 +47,13 @@ module Amistad
         # suggest a user to become a friend. If the operation succeeds, the method returns true, else false
         def invite(user)
           return false if user == self || find_any_friendship_with(user)
-          Friendship.new(:user_id => self.id, :friend_id => user.id).save
+          Friendship.create(:user_id => self.id, :friend_id => user.id)
         end
 
         # approve a friendship invitation. If the operation succeeds, the method returns true, else false
         def approve(user)
           friendship = find_any_friendship_with(user)
-          return false if friendship.nil? || invited?(user)
+          return false if friendship.nil? || invited?(user) || friendship.approved?
           friendship.update_attribute(:pending, false)
         end
 
@@ -61,7 +61,7 @@ module Amistad
         def remove_friendship(user)
           friendship = find_any_friendship_with(user)
           return false if friendship.nil?
-          friendship.destroy && friendship.destroyed?
+          friendship.destroy
         end
 
         # returns the list of approved friends
@@ -71,7 +71,7 @@ module Amistad
 
         # total # of invited and invited_by without association loading
         def total_friends
-          self.invited(false).count + self.invited_by(false).count
+          find_all_friendships.where(:pending => false, :blocker_id => nil).count
         end
 
         # blocks a friendship
@@ -93,9 +93,9 @@ module Amistad
           self.blockades(true) + self.blockades_by(true)
         end
 
-        # total # of blockades and blockedes_by without association loading
+        # total number of blocked users
         def total_blocked
-          self.blockades(false).count + self.blockades_by(false).count
+          find_all_friendships.where(:blocker_id => self.id).count
         end
 
         # checks if a user is blocked
@@ -140,7 +140,12 @@ module Amistad
           end
           friendship
         end
-      end    
+
+        # returns all friendships
+        def find_all_friendships
+          Friendship.where("user_id = :user OR friend_id = :user", :user => self.id)
+        end
+      end
     end
   end
 end
