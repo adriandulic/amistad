@@ -62,6 +62,7 @@ module Amistad
           friendship = find_any_friendship_with(user)
           return false if friendship.nil?
           friendship.destroy
+          friendship.destroyed?
         end
 
         # returns the list of approved friends
